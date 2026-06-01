@@ -1,0 +1,58 @@
+name: Daily Skills Report
+
+on:
+  schedule:
+    # 每天 UTC 00:00（北京时间 08:00）
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download previous snapshot
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: daily.yml
+          name: snapshot-prev
+          if_no_artifact_found: warn
+          search_artifacts: true
+          allow_forks: false
+
+      - name: Rename previous snapshot
+        run: |
+          if [ -f "snapshot.json" ]; then
+            mkdir -p data/snapshots
+            # 获取昨天的日期
+            PREV_DATE=$(date -d "yesterday" +%Y-%m-%d)
+            mv snapshot.json "data/snapshots/${PREV_DATE}.json"
+            echo "✅ 已恢复前一天快照: ${PREV_DATE}.json"
+          else
+            echo "📭 无前一天快照，跳过"
+          fi
+
+      - name: Run Skills-Recommender
+        run: python main.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+
+      - name: Upload today's snapshot
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-prev
+          path: data/snapshots/*.json
+          retention-days: 7
+          overwrite: true
