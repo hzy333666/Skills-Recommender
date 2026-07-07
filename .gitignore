@@ -14,15 +14,8 @@ venv/
 # Logs
 logs/
 
-# Reports
-reports/
-
 # Generated files
-*.txt
 =1.30.0
-
-# Data snapshots (GitHub Actions 通过 artifact 管理)
-data/snapshots/
 
 # IDE
 .vscode/
